@@ -1,22 +1,41 @@
 <?php
 
+use App\Livewire\Public\Landingpage;
+use App\Livewire\Admin\Dashboard as AdminDashboard;
+use App\Livewire\Instructor\Dashboard as InstructorDashboard;
+use App\Livewire\Student\Dashboard as StudentDashboard;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
-
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+Route::get('/',Landingpage::class)->name('landing');
 
 Route::middleware(['auth'])->group(function () {
-    Route::redirect('settings', 'settings/profile');
+    // Main dashboard route that redirects based on role
+    Route::get('/dashboard', function () {
+        return match(auth()->user()->role) {
+            'admin' => redirect()->route('admin.dashboard'),
+            'instructor' => redirect()->route('instructor.dashboard'),
+            default => redirect()->route('student.dashboard'),
+        };
+    })->name('dashboard');
 
-    Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
-    Volt::route('settings/password', 'settings.password')->name('settings.password');
-    Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
+    // Admin routes
+    Route::middleware(['can:admin-access'])->group(function () {
+        Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard');
+        require __DIR__.'/admin.php';
+    });
+
+    // Instructor routes
+    Route::middleware(['can:instructor-access'])->group(function () {
+        Route::get('/instructor/dashboard', InstructorDashboard::class)->name('instructor.dashboard');
+    });
+
+    // Student routes
+    Route::middleware(['can:student-access'])->group(function () {
+        Route::get('/student/dashboard', StudentDashboard::class)->name('student.dashboard');
+    });
+
+   
 });
 
 require __DIR__.'/auth.php';
